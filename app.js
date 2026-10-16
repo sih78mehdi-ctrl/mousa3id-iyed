@@ -39,7 +39,7 @@ document.addEventListener('click',e=>{if(e.target.closest('.btn,.tile,.node,#bac
 
 /* اختيار الطفل */
 function pickKid(){
-  kid=null;hist=[];back.hidden=true;who.textContent='';color('#6C4DF6');ttl.textContent='دروسي';
+  kid=null;hist=[];back.hidden=true;who.textContent='';color('#6C4DF6');ttl.textContent='مساعد إياد';
   app.innerHTML=`<div class="res"><h2>من سيدرس اليوم؟</h2></div><div class="tiles">`+KIDS.map(k=>`<div class="tile" style="--c:${k.color}" data-id="${k.id}"><span class="em">${k.emoji}</span><b>${esc(k.name)}</b></div>`).join('')+'</div>';
   app.querySelectorAll('.tile').forEach(e=>e.onclick=()=>enter(e.dataset.id));
 }
@@ -47,7 +47,7 @@ function enter(id){
   kid=KIDS.find(k=>k.id===id);if(!kid)return pickKid();
   localStorage.setItem('kid',JSON.stringify(id));
   window.SUBJECTS=SUBJECT_LIST.map(([sid,name])=>({id:sid,name,color:PAL[sid],sections:kid.subjects[sid]||[]}));
-  who.textContent=kid.emoji;hist=[];go(home,'دروسي');
+  who.textContent=kid.emoji;hist=[];go(home,'مساعد إياد');
 }
 function home(){
   const t=st(),p=prog(),total=Object.values(p).reduce((x,r)=>x+stars(r.pct),0);
