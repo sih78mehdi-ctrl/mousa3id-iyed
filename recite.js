@@ -84,7 +84,13 @@ function rsetScore(l,items,title,v){
   const b=store.get('bt',{}),B=b[l.id]||{};
   if(B[title]===undefined||v>B[title]){B[title]=v;b[l.id]=B;store.set('bt',b)}
 }
-function rstartRound(l,q){const a=store.get('rnd',{});a[l.id]={q,sc:{}};store.set('rnd',a)}
+/* بداية جولة: نحفظ لقطة من نتائج الدرس قبلها، فإن غادر التلميذ الصفحة أثناء الجولة تُلغى نتائجها وتعود النتائج السابقة كما كانت */
+function rstartRound(l,q){const a=store.get('rnd',{});a[l.id]={q,sc:{},snap:Object.assign({},rbt(l))};store.set('rnd',a)}
+function rcancelRound(l){
+  const a=store.get('rnd',{}),R=a[l.id];
+  if(R&&R.snap){const b=store.get('bt',{});if(Object.keys(R.snap).length)b[l.id]=R.snap;else delete b[l.id];store.set('bt',b)}
+  delete a[l.id];store.set('rnd',a);
+}
 /* عند تعديل عناوين الدرس: يُحذف فقط تقدّم العناوين التي لم تعد موجودة، وتبقى نتائج الباقي.
    وعند أول تشغيل بعد هذا التحديث تُنقل نتائج الجولة الأخيرة المحفوظة سابقًا إلى سجلّ العناوين */
 function rmigrate(l,items){
@@ -155,7 +161,7 @@ function recite(s,l){
   };
 
   /* ===== حفظ عنوان واحد ===== */
-  const open=(k,q)=>{cur=k;att=0;peek=0;Q=q||[k];draw()};
+  const open=(k,q)=>{cur=k;att=0;peek=0;Q=q||[k];if(testActive)testActive.live=true;draw()};
   const draw=()=>{
     const k=cur,it=items[k],pos=Math.max(0,Q.indexOf(k));
     const dots=()=>`المحاولة ${att+1}${peek?' · تدريب':''}${sc(k)>=100?' · ✅ حفظتَ هذا العنوان':''}`;
@@ -220,7 +226,7 @@ function recite(s,l){
 
   /* ===== تسميع متواصل: نص واحد لكل العناوين المحدّدة، ويُقيَّم كل عنوان منها على حدة ===== */
   const cont=(q,pk)=>{
-    cur=-1;rstopMic();testActive={type:'recite',s,l};
+    cur=-1;rstopMic();testActive={type:'recite',s,l,live:true};   /* live: جولة جارية، مغادرة الصفحة تلغيها */
     let att=0,peek=pk?1:0;
         const rowsHtml=()=>q.map((j,i)=>`<div class="rrow"${FD}>${mark(j)} ${i+1}. ${esc(items[j][0])}</div>`).join('');
     app.innerHTML=`<div class="rtop"><span>🎙️ تسميع متواصل</span><span>${q.length} ${q.length===1?'عنوان':'عناوين'}</span></div>

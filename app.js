@@ -142,7 +142,30 @@ function quiz(s,l){
 /* حفظ النتيجة على هاتف الطفل فقط (آخر نتيجة + أفضل نتيجة) */
 function save(l,pct){const p=prog(),o=p[l.id]||{};p[l.id]={pct:Math.max(pct,o.pct||0),last:pct,at:Date.now()};store.set('prog',p)}
 
+/* مغادرة الصفحة أثناء اختبار أو جولة تسميع: تُلغى الإجابات وتبدأ من الصفر، وتظهر عند العودة شاشة تنبيه */
+function leftTest(){
+  const T=testActive;if(!T||!kid)return;
+  if(T.type==='recite'&&!T.live)return;   /* قائمة العناوين ليست جولة جارية */
+  testActive=null;try{rstopMic()}catch(e){}
+  if(T.type==='recite')rcancelRound(T.l);   /* تعود نتائج الدرس إلى ما قبل الجولة */
+  store.set('leftTest',{type:T.type,sid:T.s.id,lid:T.l.id,at:Date.now()});
+}
+function showLeft(){
+  if(!kid)return;
+  const L=store.get('leftTest',null);if(!L)return;
+  localStorage.removeItem(kkey('leftTest'));
+  const s=SUBJECTS.find(x=>x.id===L.sid),l=s&&s.sections.flatMap(x=>x.lessons).find(x=>x.id===L.lid),q=L.type==='quiz',w=q?'الاختبار':'التسميع';
+  app.innerHTML=`<div class="res"><div class="big">⚠️</div><h2 style="font-size:34px">غادرتَ الصفحة أثناء ${w}</h2><p>أُلغيت جميع إجاباتك${q?'':' في هذه الجولة'} وسيبدأ ${w} من الصفر.</p><div class="acts"><div class="btn" id="rs0">ابدأ من جديد 🔄</div></div><div class="acts"><div class="btn alt" id="hm">الدروس</div></div></div>`;
+  $('#hm').onclick=()=>{hist=[];go(home,'مساعد إياد')};
+  $('#rs0').onclick=()=>{
+    if(!s||!l){hist=[];go(home,'مساعد إياد');return}
+    hist=[[home,'مساعد إياد'],[()=>subject(s),s.name,s.color],[()=>lesson(s,l),l.title,s.color]];
+    go(()=>q?quiz(s,l):recite(s,l),l.title,s.color)};
+}
+document.addEventListener('visibilitychange',()=>{document.hidden?leftTest():showLeft()});
+addEventListener('pagehide',leftTest);
+
 (function boot(){
   let id=null;try{id=JSON.parse(localStorage.getItem('kid'))}catch(e){}
-  id&&KIDS.some(k=>k.id===id)?enter(id):pickKid();
+  if(id&&KIDS.some(k=>k.id===id)){enter(id);showLeft()}else pickKid();
 })();
