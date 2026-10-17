@@ -69,7 +69,7 @@ function lesson(s,l){
   const r=prog()[l.id];
   app.innerHTML=`<h2 dir="auto">${esc(l.title)}</h2>${l.qs.length?`<div class="acts"><div class="btn" id="go">ابدأ الاختبار (${l.qs.length} سؤالًا)</div></div>${r?`<p class="hint">آخر نتيجة: ${r.last??r.pct}% · أفضل نتيجة: ${r.pct}%</p>`:''}`:'<p class="hint">لم تُضف أسئلة هذا الدرس بعد.</p>'}
   ${recBtn(l)}
-  ${l.pdf?`<div id="pdf" class="pdf"><p class="hint">جارٍ تحميل الدرس…</p></div><div class="acts"><a class="btn alt" href="${l.pdf}" target="_blank" rel="noopener">فتح الملف في صفحة مستقلة</a></div>`:'<p class="hint">سيُضاف نص هذا الدرس قريبًا.</p>'}`;
+  ${l.pdf?`<div id="pdf" class="pdf"><p class="hint">جارٍ تحميل الدرس…</p></div>`:'<p class="hint">سيُضاف نص هذا الدرس قريبًا.</p>'}`;
   if(l.qs.length)$('#go').onclick=()=>go(()=>quiz(s,l),l.title,s.color);
   if($('#rc'))$('#rc').onclick=()=>go(()=>recite(s,l),l.title,s.color);
   if(l.pdf)l.pg?renderImgs(l,$('#pdf')):renderPdf(l.pdf,$('#pdf'));
