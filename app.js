@@ -12,10 +12,9 @@ let testActive=null;
 const show=()=>{testActive=null;const[f,t,c]=hist[hist.length-1];f();ttl.textContent=t;color(c);back.hidden=hist.length<2;scrollTo(0,0)};
 const go=(fn,t,c)=>{hist.push([fn,t,c]);show()};
 back.onclick=()=>{
-  if(testActive&&testActive.type==='quiz'&&!confirm('ستُلغى كل إجاباتك ويبدأ الاختبار من الصفر. هل تريد الخروج؟'))return;
-  if(testActive){testActive=null;rstopMic()}   /* التسميع محفوظ تلقائيًا فلا يحتاج تأكيدًا */
+  if(testActive){if(!confirm('ستُلغى كل إجاباتك ويبدأ الاختبار من الصفر. هل تريد الخروج؟'))return;testActive=null;rstopMic()}
   hist.pop();show()};
-who.onclick=()=>{if(testActive&&testActive.type==='quiz'&&!confirm('ستُلغى كل إجاباتك. هل تريد تبديل الطفل؟'))return;testActive=null;try{rstopMic()}catch(e){}pickKid()};
+who.onclick=()=>{if(testActive&&!confirm('ستُلغى كل إجاباتك. هل تريد تبديل الطفل؟'))return;testActive=null;try{rstopMic()}catch(e){}pickKid()};
 const PAL={hist:'#FF9F1C',geo:'#0FB5A6',civ:'#6C4DF6',isl:'#22B35E'},ICON={hist:'📜',geo:'🌍',civ:'🏛️',isl:'🕌'};
 const PRAISE=['أحسنت!','ممتاز!','رائع!','يا بطل!','مذهل!'],OOPS=['لا بأس، تعلّم منها!','قريبًا تصيبها!','حاول في الجولة القادمة!'];
 const pick=a=>a[Math.floor(Math.random()*a.length)];
