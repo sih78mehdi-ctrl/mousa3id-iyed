@@ -52,9 +52,10 @@ const rmodelOf=item=>[...rtok(item[1]),...rtok(item[0]),...rkeys(item).flatMap(a
 /* تقييم محاولة واحدة: pct من 100 (100 فقط عند الاكتمال بلا خطأ).
    • الاكتمال: نسبة الأفكار/الكلمات المفتاحية التي ذكرها التلميذ (المرادفات مقبولة).
    • الخطأ: كل رقم أو تاريخ ليس في الحل يخصم RNUM، وكل كلمة غريبة عن الحل زائدة عن المسموح تخصم RWORD (حتى RPEN).
-   • grp (اختياري): في التسميع المتواصل يُقيَّم نص واحد لعدة عناوين؛ الأرقام والكلمات الغريبة تُقاس بالنسبة لحلول كل العناوين المحدّدة معًا،
-     وخصم الكلام الغريب يُقسَّم على عدد العناوين، وخصم الرقم الخاطئ يقع على العناوين التي فيها أرقام (أو على الكل إن لم يكن في أي منها رقم). */
-function rscore(item,text,grp){
+   • lesson (اختياري، كل عناوين الدرس): الرقم أو الكلمة يُعدّان خطأً/غريبًا فقط إذا لم يوجدا في أي مكان من الدرس، فمن ذكر معلومة صحيحة من عنوان فرعي لا يُعاقَب.
+   • grp (اختياري): في التسميع المتواصل يُقيَّم نص واحد لعدة عناوين؛ خصم الكلام الغريب يُقسَّم على عدد العناوين،
+     وخصم الرقم الخاطئ يقع على العناوين التي فيها أرقام (أو على الكل إن لم يكن في أي منها رقم). */
+function rscore(item,text,grp,lesson){
   const group=grp&&grp.length?grp:[item],k=group.length;
   const keys=rkeys(item),auto=!(item[2]&&item[2].length),got=rtok(text);
   if(!keys.length||!got.length)return{ok:false,pct:0,hit:0,total:keys.length,comp:0,bad:0,extra:0,numMiss:false,auto,badApplies:false};
@@ -65,11 +66,11 @@ function rscore(item,text,grp){
   const numMiss=numIdx.some(i=>!okK[i]);
   const raw=hit/total,comp=(auto&&!numMiss)?Math.min(1,raw/RAUTO):raw;
   /* أرقام التلميذ التي لا توجد في الحل (أو في كلماته المفتاحية) = خطأ */
-  const model=group.flatMap(rmodelOf);
-  const mnum=new Set(model.filter(isNum)),bad=[...new Set(got.filter(w=>isNum(w)&&!mnum.has(w)))].length;
+  const model=group.flatMap(rmodelOf),pool=lesson&&lesson.length?lesson.flatMap(rmodelOf):model;   /* pool: مفردات الدرس كله */
+  const mnum=new Set(pool.filter(isNum)),bad=[...new Set(got.filter(w=>isNum(w)&&!mnum.has(w)))].length;
   const ownNum=rmodelOf(item).some(isNum),anyNum=model.some(isNum),badApplies=k===1||ownNum||!anyNum;
   /* كلمات التلميذ التي لا تقابلها كلمة (ولا مرادف) في الحل = كلام غريب */
-  const words=[...new Set(got.filter(w=>!isNum(w)))],extra=words.filter(w=>!rhas(model,w)).length;
+  const words=[...new Set(got.filter(w=>!isNum(w)))],extra=words.filter(w=>!rhas(pool,w)).length;
   const allow=Math.max(1,Math.floor(words.length*RALLOW)),excess=Math.max(0,extra-allow);
   const exP=Math.min(RPEN,Math.round(excess*RWORD/k)),numP=badApplies?bad*RNUM:0;
   const perfect=comp>=1&&!numMiss&&!(badApplies&&bad)&&excess===0;
@@ -192,11 +193,13 @@ function recite(s,l){
     <p class="dots">${dots()}</p>
     <textarea id="ans" rows="5"${FD} placeholder="سمّع من حفظك… أو اكتب إجابتك بنفسك" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
     <div class="acts"><div class="btn alt" id="mic">🎙️ ابدأ التسميع</div><div class="btn" id="chk">تحقّق ✔</div></div><div id="fb"></div>
-    <div class="acts" id="tools"><div class="btn alt" id="peek">👁 أرني الحل</div><div class="btn alt" id="mn">☰ العناوين</div></div>`;
+    <div class="acts" id="tools"><div class="btn alt" id="peek">👁 أرني الحل</div>${pos+1<Q.length?'<div class="btn alt" id="skip">التالي ▶</div>':''}<div class="btn alt" id="mn">☰ العناوين</div></div>`;
     const ta=$('#ans');
     ['paste','drop','cut','copy','contextmenu'].forEach(ev=>ta.addEventListener(ev,e=>e.preventDefault()));
     initMic($('#mic'),ta,s.id==='fr'?'fr-FR':'ar-DZ');
     $('#mn').onclick=menu;
+    /* الانتقال إلى العنوان التالي مهما كانت النسبة، وللتلميذ أن يعود إلى هذا العنوان لاحقًا من القائمة لرفع نسبته */
+    if($('#skip'))$('#skip').onclick=()=>{rstopMic();open(Q[pos+1],Q)};
     /* الحل النموذجي + إمكانية الإعادة + الانتقال إلى التالي في القائمة المحدّدة */
     const lock=(head,all)=>{
       rstopMic();ta.disabled=true;$('#chk').hidden=true;$('#mic').hidden=true;$('#tools').hidden=true;
@@ -225,7 +228,7 @@ function recite(s,l){
       const text=ta.value.trim();
       if(text.length<2){$('#fb').innerHTML='<div class="fb b">اكتب أو سمّع إجابتك أولًا</div>';return}
       rstopMic();
-      const r=rscore(it,text);
+      const r=rscore(it,text,null,items);
       att++;
       rsetScore(l,items,it[0],r.pct);   /* تبقى أفضل نسبة لهذا العنوان */
       const best=sc(k);
@@ -242,7 +245,7 @@ function recite(s,l){
         if(r.bad)notes.push('يوجد رقم أو تاريخ خاطئ');
         if(r.extra)notes.push('في تسميعك كلام بعيد عن الحل');
         ta.value='';
-        $('#fb').innerHTML=`<div class="fb b">نسبة هذه المحاولة: <b>${r.pct}%</b> · أفضل نسبة لهذا العنوان: <b>${best}%</b><br>${notes.join(' · ')}<br>أعد المحاولة من حفظك حتى تبلغ 100 👇</div>`;
+        $('#fb').innerHTML=`<div class="fb b">نسبة هذه المحاولة: <b>${r.pct}%</b> · أفضل نسبة لهذا العنوان: <b>${best}%</b><br>${notes.join(' · ')}<br>أعد المحاولة من حفظك حتى تبلغ 100${pos+1<Q.length?'، أو اضغط «التالي» وعد إليه لاحقًا':''} 👇</div>`;
         document.querySelector('.dots').innerHTML=dots();
       }
     };
@@ -282,7 +285,7 @@ function recite(s,l){
       const text=ta.value.trim();
       if(text.length<2){$('#fb').innerHTML='<div class="fb b">اكتب أو سمّع إجابتك أولًا</div>';return}
       rstopMic();att++;
-      const R=q.map(j=>({j,r:rscore(items[j],text,grp)}));
+      const R=q.map(j=>({j,r:rscore(items[j],text,grp,items)}));
       R.forEach(x=>rsetScore(l,items,items[x.j][0],x.r.pct));   /* تبقى أفضل نسبة لكل عنوان */
       refresh();
       const avg=Math.round(R.reduce((t,x)=>t+x.r.pct,0)/R.length);
