@@ -164,6 +164,19 @@ function showLeft(){
 }
 document.addEventListener('visibilitychange',()=>{document.hidden?leftTest():showLeft()});
 addEventListener('pagehide',leftTest);
+/* فقدان التركيز: التطبيق ظاهر لكن التلميذ انتقل إلى نافذة أخرى (تيليغرام بجانبه، تقسيم الشاشة، Alt+Tab…).
+   مهلة ثانية واحدة لتجنّب الإنذارات الكاذبة، ويُستثنى ما يفتحه التطبيق نفسه (نوافذ التأكيد وإذن الميكروفون) */
+let blurT=null,dlg=0;
+const grace=ms=>{dlg=Math.max(dlg,Date.now()+ms)};
+['alert','confirm'].forEach(n=>{const o=window[n].bind(window);window[n]=(...a)=>{grace(1500);const r=o(...a);grace(1500);return r}});
+const watching=()=>{const T=testActive;return !!T&&(T.type==='quiz'||(T.type==='recite'&&T.live))};
+function chkBlur(){
+  blurT=null;if(!watching())return;
+  const w=dlg-Date.now();if(w>0){blurT=setTimeout(chkBlur,w+300);return}
+  if(!document.hasFocus())leftTest();
+}
+addEventListener('blur',()=>{if(!watching())return;clearTimeout(blurT);blurT=setTimeout(chkBlur,1000)});
+addEventListener('focus',()=>{clearTimeout(blurT);blurT=null;showLeft()});
 
 (function boot(){
   let id=null;try{id=JSON.parse(localStorage.getItem('kid'))}catch(e){}

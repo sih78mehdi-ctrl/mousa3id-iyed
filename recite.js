@@ -317,6 +317,7 @@ function initMic(btn,ta,lang){
     r.onresult=e=>{let acc='';for(let i=0;i<e.results.length;i++)acc=rmerge(acc,e.results[i][0].transcript);ta.value=base+acc};
     const off=()=>{on=false;if(btn.isConnected)btn.textContent='🎙️ ابدأ التسميع';btn.classList.remove('live')};
     r.onend=off;r.onerror=off;
+    if(typeof grace==='function')grace(15000);   /* نافذة إذن الميكروفون لا تُعدّ مغادرة */
     try{r.start();on=true;btn.textContent='⏹ توقّف';btn.classList.add('live')}catch(e){off()}
   };
 }
