@@ -164,22 +164,28 @@ function recite(s,l){
     initMic($('#mic'),ta,s.id==='fr'?'fr-FR':'ar-DZ');
     $('#mn').onclick=menu;
     /* الحل النموذجي + إمكانية الإعادة + الانتقال إلى التالي في القائمة المحدّدة */
-    const lock=head=>{
+    const lock=(head,all)=>{
       rstopMic();ta.disabled=true;$('#chk').hidden=true;$('#mic').hidden=true;$('#tools').hidden=true;
       $('#rpv').textContent=rpctNow(l,items)+'%';$('#rpb').textContent=Math.max(rbest(l),rpctNow(l,items));
-      const more=pos+1<Q.length;
-      $('#fb').innerHTML=`${head}<div class="mlbl">${FD?'Réponse modèle :':'الحل النموذجي:'}</div><div class="mdl"${FD}>${esc(it[1])}</div>
-      <div class="acts"><div class="btn alt" id="rt">🔁 أعد المحاولة</div><div class="btn" id="nx2">${more?'التالي ▶':(Q.length>1?'🏁 انتهى — العناوين':'☰ العناوين')}</div></div>
+      const more=!all&&pos+1<Q.length;
+      /* all=true: «أرني الحل» مع عدة عناوين محدّدة ← تُعرض الإجابة النموذجية لكل العناوين المحدّدة لا للأول فقط */
+      const models=all
+        ?`<div class="mlbl">${FD?'Réponses modèles ('+Q.length+') :':'الحلول النموذجية للعناوين المحدّدة ('+Q.length+'):'}</div>`+Q.map((j,i)=>`<div class="mitem"${FD}><div class="mt">${i+1}. ${esc(items[j][0])}</div><div class="mdl"${FD}>${esc(items[j][1])}</div></div>`).join('')
+        :`<div class="mlbl">${FD?'Réponse modèle :':'الحل النموذجي:'}</div><div class="mdl"${FD}>${esc(it[1])}</div>`;
+      $('#fb').innerHTML=`${head}${models}
+      <div class="acts"><div class="btn alt" id="rt">${all?'🔁 أعد المحاولة من الأول':'🔁 أعد المحاولة'}</div>${all?'<div class="btn" id="nx2">☰ العناوين</div>':`<div class="btn" id="nx2">${more?'التالي ▶':(Q.length>1?'🏁 انتهى — العناوين':'☰ العناوين')}</div>`}</div>
       ${more?'<div class="acts"><div class="btn alt" id="mn2">☰ العناوين</div></div>':''}`;
-      $('#rt').onclick=()=>{att=0;peek=1;draw()};   /* بعد رؤية الحل: تدريب لا ينقص الدرجة ولا يتجاوز 40 */
+      /* بعد رؤية الحل: تدريب لا ينقص الدرجة ولا يتجاوز 40 */
+      $('#rt').onclick=()=>{if(all)cur=Q[0];att=0;peek=1;draw()};
       $('#nx2').onclick=()=>{if(more)open(Q[pos+1],Q);else{sel.clear();menu()}};
       if($('#mn2'))$('#mn2').onclick=menu;
       scrollTo(0,document.body.scrollHeight);
     };
     $('#peek').onclick=()=>{              /* من اطّلع على الحل قبل الإجابة لا ينال درجة كاملة */
-      if(sc(k)===undefined)rsetScore(l,items,it[0],0);
+      const all=Q.length>1;
+      (all?Q:[k]).forEach(j=>{if(sc(j)===undefined)rsetScore(l,items,items[j][0],0)});   /* كل عنوان انكشف حلّه يُسجَّل أنه اطُّلع عليه */
       peek=1;
-      lock('<div class="fb b">اقرأ الحل جيدًا ثم أعد المحاولة من حفظك 👇</div>');
+      lock('<div class="fb b">اقرأ الحل جيدًا ثم أعد المحاولة من حفظك 👇</div>',all);
     };
     $('#chk').onclick=()=>{
       const text=ta.value.trim();
@@ -211,9 +217,7 @@ function recite(s,l){
     const R=rrnd(l),RI=R.q.map(k=>items[k]).filter(Boolean),nn=RI.length||n,pct=rpctNow(l,items),mem=RI.filter(it=>(R.sc[it[0]]||0)>0).length;
     rsync(l,items);
     const p=store.get('recp',{});
-    const q=store.get('outbox',[]);
-    q.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),ts:Date.now(),student:name,subject:s.name,lessonId:l.id,lesson:l.title,right:mem,total:nn,percent:pct,kind:'recite'});
-    store.set('outbox',q);flush();addXp(Math.round(pct/5));
+    addXp(Math.round(pct/5));
     const best=p[l.id]?p[l.id].pct:pct,nst=stars(pct);
     const rows=RI.map(it=>{const v=R.sc[it[0]]||0;return `<div class="rrow">${v>=100?'✅':v>0?'🟡':'❌'} ${esc(it[0])}</div>`}).join('');
     app.innerHTML=`<div class="res"><div class="big">${pct>=70?'🏆':'💪'}</div><h2>${pct}%</h2><div class="st">${starsHtml(nst)}</div>
