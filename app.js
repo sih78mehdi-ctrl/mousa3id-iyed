@@ -144,11 +144,12 @@ function save(l,pct){const p=prog(),o=p[l.id]||{};p[l.id]={pct:Math.max(pct,o.pc
 
 /* مغادرة الصفحة أثناء اختبار أو جولة تسميع: تُلغى الإجابات وتبدأ من الصفر، وتظهر عند العودة شاشة تنبيه */
 function leftTest(){
-  const T=testActive;if(!T||!kid)return;
-  if(T.type==='recite'&&!T.live)return;   /* قائمة العناوين ليست جولة جارية */
+  const T=testActive;if(!T||!kid)return false;
+  if(T.type==='recite'&&!T.live)return false;   /* قائمة العناوين ليست جولة جارية */
   testActive=null;try{rstopMic()}catch(e){}
   if(T.type==='recite')rcancelRound(T.l);   /* تعود نتائج الدرس إلى ما قبل الجولة */
   store.set('leftTest',{type:T.type,sid:T.s.id,lid:T.l.id,at:Date.now()});
+  return true;
 }
 function showLeft(){
   if(!kid)return;
@@ -173,10 +174,16 @@ const watching=()=>{const T=testActive;return !!T&&(T.type==='quiz'||(T.type==='
 function chkBlur(){
   blurT=null;if(!watching())return;
   const w=dlg-Date.now();if(w>0){blurT=setTimeout(chkBlur,w+300);return}
-  if(!document.hasFocus())leftTest();
+  if(!document.hasFocus()&&leftTest())showLeft();   /* يُخفى محتوى الجولة فورًا فلا يبقى مقروءًا بجانب النافذة الأخرى */
 }
 addEventListener('blur',()=>{if(!watching())return;clearTimeout(blurT);blurT=setTimeout(chkBlur,1000)});
-addEventListener('focus',()=>{clearTimeout(blurT);blurT=null;showLeft()});
+addEventListener('focus',()=>{clearTimeout(blurT);blurT=null;noFocus=0;showLeft()});
+/* احتياط: بعض المتصفحات/النوافذ لا تُطلق blur دائمًا، فنفحص التركيز كل نصف ثانية أثناء الجولة */
+let noFocus=0;
+setInterval(()=>{
+  if(!watching()||Date.now()<dlg||document.hasFocus()){noFocus=0;return}
+  if(++noFocus>=3){noFocus=0;if(leftTest())showLeft()}
+},500);
 
 (function boot(){
   let id=null;try{id=JSON.parse(localStorage.getItem('kid'))}catch(e){}
