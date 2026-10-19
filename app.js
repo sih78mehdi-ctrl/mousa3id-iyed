@@ -44,8 +44,19 @@ function pickKid(){
   app.innerHTML=`<div class="res"><h2>من سيدرس اليوم؟</h2></div><div class="tiles">`+KIDS.map(k=>`<div class="tile" style="--c:${k.color}" data-id="${k.id}"><span class="em">${k.emoji}</span><b>${esc(k.name)}</b></div>`).join('')+'</div>';
   app.querySelectorAll('.tile').forEach(e=>e.onclick=()=>enter(e.dataset.id));
 }
+/* إذا استُبدل محتوى درس (أُضيف له {v:رقم} أو زاد رقمه في data.js) يُمسح تقدّمه القديم مرة واحدة على هاتف الطفل: النجوم وأفضل نتيجة وحالة العناوين والجولات */
+function migrate(){
+  const lv=store.get('lv',{});let ch=false;
+  Object.values(kid.subjects).flat().forEach(u=>(u.lessons||[]).forEach(l=>{
+    if(!l.v||lv[l.id]===l.v)return;
+    ['prog','bt','rnd'].forEach(k=>{const o=store.get(k,{});if(o[l.id]!==undefined){delete o[l.id];store.set(k,o)}});
+    lv[l.id]=l.v;ch=true;
+  }));
+  if(ch)store.set('lv',lv);
+}
 function enter(id){
   kid=KIDS.find(k=>k.id===id);if(!kid)return pickKid();
+  migrate();
   localStorage.setItem('kid',JSON.stringify(id));
   window.SUBJECTS=SUBJECT_LIST.map(([sid,name])=>({id:sid,name,color:PAL[sid],sections:kid.subjects[sid]||[]}));
   who.textContent=kid.emoji;hist=[];go(home,'مساعد إياد');
